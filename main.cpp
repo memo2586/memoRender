@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     if (2==argc) {
         model = new Model(argv[1]);
     } else {
-        model = new Model("G:/memo/Code/tinyrenderer/Lesson_6_Shaders_for_the_software_renderer/obj/diablo3_pose.obj");
+        model = new Model("G:/memo/Code/tinyrenderer/Lesson_6_Shaders_for_the_software_renderer/obj/african_head.obj");
     }
 
     modelview(camera, center, up);
