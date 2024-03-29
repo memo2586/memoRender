@@ -19,10 +19,10 @@ void viewport(int x, int y, int w, int h){
     Viewport = Matrix::identity();
     Viewport[0][3] = x + w / 2.f;
     Viewport[1][3] = y + h / 2.f;
-    Viewport[2][3] = 255.f / 2.f;
+    Viewport[2][3] = depth / 2.f;
     Viewport[0][0] = w / 2.f;
     Viewport[1][1] = h / 2.f;
-    Viewport[2][2] = 255.f / 2.f;
+    Viewport[2][2] = depth / 2.f;
 }
 
 /*
@@ -94,31 +94,62 @@ Vec3f barycentric_(Vec2f A, Vec2f B, Vec2f C, Vec2f P) {
             - 着色器得到：存储该三角形每个顶点的纹理坐标的矩阵；
           光栅化器遍历位于该三角形内的所有片段，计算其重心坐标并将其传递给片段着色器，再将片段着色器返回的颜色值写入图像
 */
-void triangle(Vec4f *pts, IShader &shader, TGAImage &image, TGAImage &zbuffer){
-    // boundingbox
+void triangle_(mat<4, 3, float>& clipc, IShader& shader, TGAImage& image, float* zbuffer) {
+    mat<3, 4, float> pts = (Viewport * clipc).transpose();
+    mat<3, 2, float> ndc_pts;
+    for (int i = 0; i < 3; i++) ndc_pts[i] = proj<2>(pts[i] / pts[i][3]);
+
     Vec2f boundingbox_max(std::numeric_limits<float>::min(), std::numeric_limits<float>::min());
     Vec2f boundingbox_min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-    Vec2i P;    //pixel
-    TGAColor color;
-    for(int i = 0; i < 3; i++){
-        for(int j = 0; j < 2; j++){
-            boundingbox_max[j] = std::max(pts[i][j] / pts[i][3], boundingbox_max[j]);
-            boundingbox_min[j] = std::min(pts[i][j] / pts[i][3], boundingbox_min[j]);
+    Vec2f clamp(image.get_width() - 1, image.get_height() - 1);
+
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 2; j++) {
+            boundingbox_max[j] = std::min(clamp[j], std::max(ndc_pts[i][j], boundingbox_max[j]));
+            boundingbox_min[j] = std::max(0.f, std::min(ndc_pts[i][j], boundingbox_min[j]));
         }
     }
 
-    for(P.x = boundingbox_min.x; P.x <= boundingbox_max.x; P.x++){
-        for(P.y = boundingbox_min.y; P.y <= boundingbox_max.y; P.y++){
-            // 计算重心坐标 (参数为原坐标)
-            Vec3f bc = barycentric_(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
-            float P_z = (pts[0][2] / pts[0][3]) * bc.x + (pts[1][2] / pts[1][3]) * bc.y + (pts[2][2] / pts[2][3]) * bc.z;
-            int depth = std::max(0, std::min(255, (int)std::ceil(P_z)));
-            // 重心坐标有负值，说明点不在三角形上 或 没有通过深度测试 跳过
-            if (bc.x<0 || bc.y<0 || bc.z<0 || zbuffer.get(P.x, P.y)[0] > depth) continue;
-            bool discard = shader.fragment(bc, color);  // 调用片段着色器对当前像素着色
-            if(!discard){
-                // 更新
-                zbuffer.set(P.x, P.y, depth);
+    Vec2i P;
+    TGAColor color;
+    for (P.x = boundingbox_min.x; P.x <= boundingbox_max.x; P.x++) {
+        for (P.y = boundingbox_min.y; P.y <= boundingbox_max.y; P.y++) {
+            Vec3f bc_screen = barycentric(ndc_pts[0], ndc_pts[1], ndc_pts[2], P);
+            // 重心坐标的透视矫正
+            Vec3f bc_clip = Vec3f(bc_screen.x / pts[0][3], bc_screen.y / pts[1][3], bc_screen.z / pts[2][3]);
+            bc_clip = bc_clip / (bc_clip.x + bc_clip.y + bc_clip.z);    // 保证矫正后重心坐标分量和为1
+            float frag_depth = clipc[2] * bc_clip;
+            if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z<0 || zbuffer[P.x + P.y * image.get_width()]>frag_depth) continue;
+            bool discard = shader.fragment(bc_clip, color);
+            if (!discard) {
+                zbuffer[P.x + P.y * image.get_width()] = frag_depth;
+                image.set(P.x, P.y, color);
+            }
+        }
+    }
+}
+
+void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float* zbuffer) {
+    Vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 2; j++) {
+            bboxmin[j] = std::min(bboxmin[j], pts[i][j] / pts[i][3]);
+            bboxmax[j] = std::max(bboxmax[j], pts[i][j] / pts[i][3]);
+        }
+    }
+    Vec2i P;
+    TGAColor color;
+    for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++) {
+        for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++) {
+            Vec3f c = barycentric(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
+            float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
+            float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
+            int frag_depth = z / w;
+            if (c.x < 0 || c.y < 0 || c.z<0 || zbuffer[P.x + P.y * image.get_width()]>frag_depth) continue;
+            bool discard = shader.fragment(c, color);
+            if (!discard) {
+                zbuffer[P.x + P.y * image.get_width()] = frag_depth;
                 image.set(P.x, P.y, color);
             }
         }
