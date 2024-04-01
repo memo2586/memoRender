@@ -31,10 +31,9 @@ struct Shader : public IShader
     mat<4, 3, float> varying_tri;   // 齐次坐标下的三角形顶点
     mat<3, 3, float> ndc_tri;       // 标准坐标系下的三角形顶点
     mat<3, 3, float> varying_nrm;    // 存储三角形顶点法线
-    mat<3, 3, float> ndc_mvp;
     mat<4, 4, float> uniform_M;     // Projection*ModelView，用于将模型世界坐标转换到屏幕空间坐标
     mat<4, 4, float> uniform_MIT;   // uniform_M 的逆转置，用于变换法线方向以保证法线方向依旧垂直于变换后的表面
-    mat<4, 4, float> uniform_MS;
+    mat<4, 4, float> uniform_MS;    // 用于将 ndc_tri 逆变换到 shadowmapping 所在坐标系
 
     Shader(Matrix M, Matrix MIT, Matrix MS) : uniform_M(M), uniform_MIT(MIT), uniform_MS(MS), varying_uv(), varying_tri() {}
 
@@ -51,11 +50,6 @@ struct Shader : public IShader
         gl_Vertex = uniform_M * gl_Vertex;
         varying_tri.set_col(nvert, gl_Vertex);
         ndc_tri.set_col(nvert, proj<3>(gl_Vertex / gl_Vertex[3]));
-
-        // 阴影缓冲区坐标
-        Vec4f dl_Vertex = Viewport * gl_Vertex;
-        ndc_mvp.set_col(nvert, proj<3>(dl_Vertex / dl_Vertex[3]));
-
         // 读取纹理贴图
         varying_uv.set_col(nvert, model->uv(nface, nvert));
         // 读取并处理法线贴图
@@ -67,7 +61,7 @@ struct Shader : public IShader
         fragment 片段着色器
         参数：重心坐标，颜色
         返回：bool
-        功能：纹理坐标插值、法线坐标系变换 & 光源坐标系变换、简化的phong模型
+        功能：纹理坐标插值、法线坐标系变换 & 光源坐标系变换、简化的phong模型、shadow mapping
              最终经过以上计算得到颜色值，返回 bool 值标志该片段是否丢弃
     */
     virtual bool fragment(Vec3f bc, TGAColor& color) {
@@ -75,7 +69,7 @@ struct Shader : public IShader
         Vec3f bn = (varying_nrm * bc).normalize();
 
         // shadow mapping
-        Vec4f sb_p = uniform_MS * embed<4>(ndc_mvp * bc); // corresponding point in the shadow buffer
+        Vec4f sb_p = uniform_MS * embed<4>(ndc_tri * bc); // 逆变换到 shadowmapping 所在坐标系
         sb_p = sb_p / sb_p[3];
         int idx = int(sb_p[0]) + int(sb_p[1]) * width; // index in the shadowbuffer array
         float shadow = .3 + .7 * (sb_p[2] - shadowbuffer[idx] > 0.01); // magic coeff to avoid z-fighting
@@ -92,7 +86,6 @@ struct Shader : public IShader
         B.set_col(1, j.normalize());
         B.set_col(2, bn);
         Vec3f normal = (B * model->normal(uv)).normalize();
-        //Vec3f normal = proj<3>(uniform_M * embed<4>(n)).normalize();
 
         Vec3f light = proj<3>(uniform_M * embed<4>(light_dir)).normalize();
         Vec3f eye = proj<3>(uniform_M * embed<4>(camera)).normalize();
@@ -167,7 +160,7 @@ int main(int argc, char** argv) {
         viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
         projection(-1.f / (camera - center).norm());
 
-        Shader shader(Projection * Modelview, (Projection * Modelview).invert_transpose(), M * (Viewport * Projection * Modelview).invert());
+        Shader shader(Projection * Modelview, (Projection * Modelview).invert_transpose(), M * ( Projection * Modelview).invert());
 
         Vec4f screen_coords[3];
         for (int i = 0; i < model->nfaces(); i++) {
