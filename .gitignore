@@ -1,0 +1,21 @@
+﻿################################################################################
+# 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
+################################################################################
+
+/.vs
+/x64
+/.gitattributes
+/depth.tga
+/framebuffer.tga
+/memoRender.exe
+/memoRender.filters
+/memoRender.sln
+/memoRender.user
+/memoRender.vcxproj
+/memoRender.vcxproj.filters
+/memoRender.vcxproj.user
+/output.tga
+/shadowmapping.tga
+/spec.tga
+/spec2.tga
+/zbuffer.tga
