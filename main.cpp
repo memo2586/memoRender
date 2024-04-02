@@ -13,9 +13,9 @@ float* shadowbuffer = nullptr;
 const int width = 1600;
 const int height = 1600;
 
-Vec3f camera(1, 1, 4);
+Vec3f camera(0, 0, 3);
 Vec3f center(0, 0, 0);
-Vec3f light_dir(1, 3, 3);
+Vec3f light_dir(1, 1, 1);
 Vec3f up(0, 1, 0);
 
 std::string getUniqueString() {
@@ -122,12 +122,12 @@ struct DepthShader : public IShader {
 
 int main(int argc, char** argv) {
     std::string time = getUniqueString();
-    std::string model_path = "C:/Users/memo2586/3D Objects/obj/african_head.obj";
-    std::string model_type = "";
-    std::string output_file_name = "memoRender_" + time + ".tga";
+    std::string model_path = "C:/Users/memo2586/3D Objects/obj/";
+    std::string model_name = "diablo3_pose.obj";
+    std::string output_file_name = "memoRender_" + model_name + "_" + time + ".tga";
     std::string output_path = "C:/Users/memo2586/3D Objects/output/";
 
-    model = new Model(model_path.c_str());
+    model = new Model((model_path + model_name).c_str());
     zbuffer = new float[width * height];
     shadowbuffer = new float[width * height];
     for (int i = width * height; i--; zbuffer[i] = shadowbuffer[i] = -std::numeric_limits<float>::max());
