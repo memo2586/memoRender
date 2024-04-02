@@ -174,6 +174,8 @@ int main(int argc, char** argv) {
         image.write_tga_file((output_path + output_file_name).c_str());
     }
 
+    delete[] shadowbuffer;
+    delete[] zbuffer;
     delete model;
     return 0;
 }
