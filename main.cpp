@@ -30,7 +30,7 @@ struct Shader : public IShader
     mat<2, 3, float> varying_uv;    // 存储三角形每个顶点的纹理坐标
     mat<4, 3, float> varying_tri;   // 齐次坐标下的三角形顶点
     mat<3, 3, float> ndc_tri;       // 标准坐标系下的三角形顶点
-    mat<3, 3, float> varying_nrm;    // 存储三角形顶点法线
+    mat<3, 3, float> varying_nrm;    // 三角形顶点法线
     mat<4, 4, float> uniform_M;     // Projection*ModelView，用于将模型世界坐标转换到屏幕空间坐标
     mat<4, 4, float> uniform_MIT;   // uniform_M 的逆转置，用于变换法线方向以保证法线方向依旧垂直于变换后的表面
     mat<4, 4, float> uniform_MS;    // 用于将 ndc_tri 逆变换到 shadowmapping 所在坐标系
@@ -40,9 +40,7 @@ struct Shader : public IShader
     /*
         vertex 顶点着色器
         参数: 面编号，顶点编号
-        返回：Vec4f
-        功能：1.根据接受的参数从模型中读取：顶点坐标、纹理坐标，并存储uv坐标
-              2.计算并返回输入顶点经过MVP变换后的坐标
+        返回：Vec4f 三角形顶点信息，同时为片段着色器准备数据
     */
     virtual Vec4f vertex(int nface, int nvert) {
         // 处理顶点
@@ -60,9 +58,7 @@ struct Shader : public IShader
     /*
         fragment 片段着色器
         参数：重心坐标，颜色
-        返回：bool
-        功能：纹理坐标插值、法线坐标系变换 & 光源坐标系变换、简化的phong模型、shadow mapping
-             最终经过以上计算得到颜色值，返回 bool 值标志该片段是否丢弃
+        返回：bool 标志该片段是否丢弃，同时计算片段颜色
     */
     virtual bool fragment(Vec3f bc, TGAColor& color) {
         Vec2f uv = varying_uv * bc;

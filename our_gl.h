@@ -11,7 +11,7 @@ void projection(float coeff = 1.f);     //coeff = -1/camera
 void modelview(Vec3f camera, Vec3f center, Vec3f up);
 
 struct IShader{
-    virtual ~IShader(); //别忘了实现
+    virtual ~IShader(); 
     virtual Vec4f vertex(int iface, int nthvert) = 0;
     virtual bool fragment(Vec3f bar, TGAColor &color) = 0;
 };

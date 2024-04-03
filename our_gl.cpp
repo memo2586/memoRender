@@ -13,7 +13,6 @@ IShader::~IShader() {}
     viewport
     参数：视口起始x坐标，视口起始y坐标，视口宽度，视口高度
     返回：无
-    功能：计算视口变换矩阵
 */
 void viewport(int x, int y, int w, int h){
     Viewport = Matrix::identity();
@@ -29,7 +28,6 @@ void viewport(int x, int y, int w, int h){
     projection
     参数：系数（-1/c）
     返回：无
-    功能：计算透视变换矩阵
 */
 void projection(float coeff){
     Projection = Matrix::identity();
@@ -40,7 +38,6 @@ void projection(float coeff){
     modelview
     参数：相机坐标、相机观察的中心点坐标、指向原坐标系上方的方向向量up(0,1,0)
     返回：无
-    功能：计算模型变换矩阵
 */
 void modelview(Vec3f camera, Vec3f center, Vec3f up){
     //计算出z，根据z和up算出x，再算出y
@@ -60,8 +57,7 @@ void modelview(Vec3f camera, Vec3f center, Vec3f up){
 /*
     barycentric
     参数：顶点坐标1，顶点坐标2，顶点坐标3，坐标P
-    返回：Vec3f
-    功能：返回点P在由三个顶点坐标围成的三角形中的重心坐标
+    返回：Vec3f 重心坐标
 */
 Vec3f barycentric(Vec2f A, Vec2f B, Vec2f C, Vec2f P) {
     Vec3f s[2];
@@ -86,13 +82,11 @@ Vec3f barycentric_(Vec2f A, Vec2f B, Vec2f C, Vec2f P) {
 
 /*
     triangle
-    参数：顶点坐标数组，着色器，目标图像，深度缓冲区
+    参数：顶点坐标数组，着色器，图像缓冲器，深度缓冲区
     返回：无
     功能：光栅化器，将模型中每个三角形，使用指定的着色器来渲染这个三角形到目标图像上，同时利用深度缓冲区来正确处理遮挡关系。
-          主函数的内循环完成时：
-            - 光栅化器得到：三角形三个顶点经过MVP变换后的坐标（屏幕世界坐标）；
-            - 着色器得到：存储该三角形每个顶点的纹理坐标的矩阵；
-          光栅化器遍历位于该三角形内的所有片段，计算其重心坐标并将其传递给片段着色器，再将片段着色器返回的颜色值写入图像
+          主函数的内循环完成时，光栅化器得到：三角形顶点经过MVP变换后的坐标（屏幕世界坐标）；
+          光栅化器遍历位于该三角形内的所有片段，计算其重心坐标并将其传递给片段着色器，再将片段着色器返回的颜色值写入缓冲区
 */
 void triangle_(mat<4, 3, float>& clipc, IShader& shader, TGAImage& image, float* zbuffer) {
     mat<3, 4, float> pts = (Viewport * clipc).transpose();
