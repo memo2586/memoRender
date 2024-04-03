@@ -118,10 +118,10 @@ struct DepthShader : public IShader {
 
 int main(int argc, char** argv) {
     std::string time = getUniqueString();
-    std::string model_path = "C:/Users/memo2586/3D Objects/obj/";
+    std::string model_path = "obj/";
     std::string model_name = "diablo3_pose.obj";
     std::string output_file_name = "memoRender_" + model_name + "_" + time + ".tga";
-    std::string output_path = "C:/Users/memo2586/3D Objects/output/";
+    std::string output_path = "output/";
 
     model = new Model((model_path + model_name).c_str());
     zbuffer = new float[width * height];
