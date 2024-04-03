@@ -1,6 +1,7 @@
 #include <iostream> 
 #include <sstream>
 #include <cstring>
+#include <ctime>
 
 #include "geometry.h"
 #include "model.h"
@@ -120,8 +121,10 @@ int main(int argc, char** argv) {
     std::string time = getUniqueString();
     std::string model_path = "obj/";
     std::string model_name = "diablo3_pose.obj";
+    if (argc >= 2) model_name = std::string(argv[1]);
+
     std::string output_file_name = "memoRender_" + model_name + "_" + time + ".tga";
-    std::string output_path = "output/";
+    // std::string output_path = "output/";
 
     model = new Model((model_path + model_name).c_str());
     zbuffer = new float[width * height];
@@ -167,7 +170,7 @@ int main(int argc, char** argv) {
         }
 
         image.flip_vertically(); // to place the origin in the bottom left corner of the image
-        image.write_tga_file((output_path + output_file_name).c_str());
+        image.write_tga_file((output_file_name).c_str());
     }
 
     delete[] shadowbuffer;
